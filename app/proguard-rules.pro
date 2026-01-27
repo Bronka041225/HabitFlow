@@ -26,16 +26,8 @@
     @androidx.room.ColumnInfo <fields>;
 }
 
-# Jetpack Compose
--keep class androidx.compose.runtime.** { *; }
--keep class androidx.compose.ui.** { *; }
--keepclassmembers class androidx.compose.** { *; }
-
-# Keep all Composable functions
--keep @androidx.compose.runtime.Composable class ** { *; }
--keepclassmembers class ** {
-    @androidx.compose.runtime.Composable *;
-}
+# Jetpack Compose - minimal rules, Compose handles obfuscation well
+# Only add specific rules if runtime issues occur
 
 # Keep ViewModel classes
 -keep class * extends androidx.lifecycle.ViewModel { *; }
@@ -60,21 +52,7 @@
 }
 -keep class kotlin.reflect.jvm.internal.** { *; }
 
-# Keep generic signature of Call, Response (R8 full mode strips signatures from non-kept items)
--keep,allowobfuscation,allowshrinking interface retrofit2.Call
--keep,allowobfuscation,allowshrinking class retrofit2.Response
-
 # With R8 full mode generic signatures are stripped for classes that are not
 # kept. Suspend functions are wrapped in continuations where the type argument
 # is used.
 -keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
-
-# Vico Charts (if needed)
--keep class com.patrykandpatrick.vico.** { *; }
-
-# AndroidX and Material Components
--dontwarn com.google.android.material.**
--keep class com.google.android.material.** { *; }
--keep class androidx.** { *; }
--keep interface androidx.** { *; }
--dontwarn androidx.**
