@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.example.habitflow.app-mergeDebugResources-62:/values-v30/values-v30.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\26211\\.gradle\\caches\\9.0-milestone-1\\transforms\\11886596e18d2c170d3ce5a0a22de525\\transformed\\jetified-material3-release\\res\\values-v30\\values-v30.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "72",
+                        "endOffsets": "123"
+                    }
+                }
+            ]
+        }
+    ]
+}

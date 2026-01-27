@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.HabitFlow" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- 核心修复：把窗口背景设为深色 (#121212)，防止闪屏 -->
+        <item name="android:windowBackground">#121212</item>
+        <!-- 同时把状态栏也设为深色，保持一致 -->
+        <item name="android:statusBarColor">#121212</item>
+        <item name="android:navigationBarColor">#121212</item>
+    </style>
+</resources>
