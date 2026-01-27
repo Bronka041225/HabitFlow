@@ -17,7 +17,7 @@
 
 # Room runtime
 -keepclassmembers class * extends androidx.room.RoomDatabase {
-    public static ** getDatabase(android.content.Context);
+    public static <methods>;
 }
 
 # Keep Kotlin metadata for data classes used by Room
@@ -29,8 +29,7 @@
 # Jetpack Compose - minimal rules, Compose handles obfuscation well
 # Only add specific rules if runtime issues occur
 
-# Keep ViewModel classes
--keep class * extends androidx.lifecycle.ViewModel { *; }
+# Keep ViewModel constructors for reflection-based instantiation
 -keepclassmembers class * extends androidx.lifecycle.ViewModel {
     <init>(...);
 }
