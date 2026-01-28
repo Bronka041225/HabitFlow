@@ -1,5 +1,8 @@
 package com.example.habitflow.ui.screens
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -24,11 +26,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -36,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,9 +50,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.habitflow.R
 import com.example.habitflow.data.entity.HabitEntity
 import com.example.habitflow.ui.components.HabitCard
 import com.example.habitflow.ui.viewmodel.HabitViewModel
@@ -61,6 +69,34 @@ fun HomeScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var habitToDelete by remember { mutableStateOf<HabitEntity?>(null) }
     var habitToLog by remember { mutableStateOf<HabitEntity?>(null) }
+    
+    // Export State
+    var showExportDialog by remember { mutableStateOf(false) }
+    var exportFormat by remember { mutableStateOf("JSON") }
+    val context = LocalContext.current
+    
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("*/*"),
+        onResult = { uri ->
+            uri?.let { viewModel.exportData(it, exportFormat) }
+        }
+    )
+
+    LaunchedEffect(Unit) {
+        viewModel.exportEvent.collect { status ->
+            if (status == "Success") {
+                Toast.makeText(context, R.string.export_success, Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, R.string.export_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    LaunchedEffect(Unit) {
+        viewModel.achievementEvent.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -71,7 +107,7 @@ fun HomeScreen(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Habit")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_habit))
             }
         }
     ) { paddingValues ->
@@ -82,11 +118,24 @@ fun HomeScreen(
                 .padding(16.dp)
         ) {
             // Header
-            Text(
-                text = "专注 (Focus)",
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 40.sp),
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.title_focus),
+                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 40.sp),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                IconButton(onClick = { showExportDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = stringResource(R.string.export_data),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(24.dp))
 
             // Habit List
@@ -123,8 +172,8 @@ fun HomeScreen(
         habitToDelete?.let { habit ->
             AlertDialog(
                 onDismissRequest = { habitToDelete = null },
-                title = { Text("删除习惯") },
-                text = { Text("确定要删除 '${habit.name}' 吗？所有记录也将被永久删除。") },
+                title = { Text(stringResource(R.string.delete_habit)) },
+                text = { Text(stringResource(R.string.confirm_delete, habit.name)) },
                 confirmButton = {
                     Button(
                         onClick = {
@@ -133,12 +182,12 @@ fun HomeScreen(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("删除")
+                        Text(stringResource(R.string.delete))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { habitToDelete = null }) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             )
@@ -154,7 +203,55 @@ fun HomeScreen(
                 }
             )
         }
+
+        if (showExportDialog) {
+            ExportDialog(
+                onDismiss = { showExportDialog = false },
+                onConfirm = { format ->
+                    exportFormat = format
+                    val fileName = "habitflow_backup_${System.currentTimeMillis()}.${format.lowercase()}"
+                    exportLauncher.launch(fileName)
+                    showExportDialog = false
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun ExportDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.export_data)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.choose_export_format))
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { onConfirm("JSON") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.export_json))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { onConfirm("CSV") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.export_csv))
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -173,6 +270,7 @@ fun HabitRow(
         habitName = habit.name,
         currentCount = currentCount,
         targetCount = habit.dailyTarget,
+        streak = habit.currentStreak,
         onIncrement = onLogClick, // The '+' button opens the log dialog
         modifier = Modifier.combinedClickable(
             onClick = onClick,
@@ -204,26 +302,26 @@ fun AddHabitDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "新建习惯") },
+        title = { Text(text = stringResource(R.string.create_habit)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("习惯名称 (如: 俯卧撑)") },
+                    label = { Text(stringResource(R.string.habit_name_label)) },
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = target,
                     onValueChange = { target = it },
-                    label = { Text("每日目标 (如: 50)") },
+                    label = { Text(stringResource(R.string.daily_target_label)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("选择主题色", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.select_color), style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Color Palette Row
@@ -264,7 +362,7 @@ fun AddHabitDialog(
                     onClick = onGenerateTest,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("🛠️ 生成测试数据 (演示用)", color = Color.Gray)
+                    Text(stringResource(R.string.debug_generate_data), color = Color.Gray)
                 }
             }
         },
@@ -276,12 +374,12 @@ fun AddHabitDialog(
                     }
                 }
             ) {
-                Text("创建")
+                Text(stringResource(R.string.create))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -297,10 +395,10 @@ fun LogProgressDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "记录: $habitName") },
+        title = { Text(text = stringResource(R.string.log_habit, habitName)) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("快速添加", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.quick_add), style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -311,12 +409,12 @@ fun LogProgressDialog(
                     OutlinedButton(onClick = { onConfirm(10) }) { Text("+10") }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("自定义数量", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.custom_amount), style = MaterialTheme.typography.labelMedium)
                 OutlinedTextField(
                     value = customAmount,
                     onValueChange = { customAmount = it },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    placeholder = { Text("输入数字") },
+                    placeholder = { Text(stringResource(R.string.input_number_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -331,12 +429,12 @@ fun LogProgressDialog(
                     }
                 }
             ) {
-                Text("添加自定义")
+                Text(stringResource(R.string.add_custom))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

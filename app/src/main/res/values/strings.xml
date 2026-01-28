@@ -1,3 +1,49 @@
 <resources>
     <string name="app_name">HabitFlow</string>
+    <string name="title_focus">专注 (Focus)</string>
+    <string name="add_habit">添加习惯</string>
+    <string name="delete_habit">删除习惯</string>
+    <string name="confirm_delete">确定要删除 %1$s 吗？所有记录也将被永久删除。</string>
+    <string name="delete">删除</string>
+    <string name="cancel">取消</string>
+    <string name="create_habit">新建习惯</string>
+    <string name="habit_name_label">习惯名称 (如: 俯卧撑)</string>
+    <string name="daily_target_label">每日目标 (如: 50)</string>
+    <string name="select_color">选择主题色</string>
+    <string name="debug_generate_data">🛠️ 生成测试数据 (演示用)</string>
+    <string name="create">创建</string>
+    <string name="log_habit">记录: %1$s</string>
+    <string name="quick_add">快速添加</string>
+    <string name="custom_amount">自定义数量</string>
+    <string name="input_number_placeholder">输入数字</string>
+    <string name="add_custom">添加自定义</string>
+    <string name="detail_title">详情</string>
+    <string name="back">返回</string>
+    <string name="total_label">总计 %1$s</string>
+    <string name="consistency_title">坚持记录 (Consistency)</string>
+    <string name="trend_title">近期趋势 (30天)</string>
+    <string name="unit_times">次</string>
+    <string name="unit_minutes">分钟</string>
+    <string name="unit_cups">杯</string>
+    <string name="habit_pushups">俯卧撑</string>
+    <string name="habit_reading">阅读</string>
+    <string name="habit_water">喝水</string>
+    <string name="export_data">导出数据</string>
+    <string name="export_csv">导出 CSV</string>
+    <string name="export_json">导出 JSON</string>
+    <string name="export_success">导出成功</string>
+    <string name="export_failed">导出失败</string>
+    <string name="choose_export_format">选择导出格式</string>
+    
+    <!-- Achievements -->
+    <string name="achievement_streak_3">三日连胜</string>
+    <string name="achievement_streak_3_desc">连续打卡 3 天！</string>
+    <string name="achievement_streak_7">周战士</string>
+    <string name="achievement_streak_7_desc">连续打卡 7 天！</string>
+    <string name="achievement_streak_30">月度大师</string>
+    <string name="achievement_streak_30_desc">连续打卡 30 天！</string>
+    <string name="achievement_unlocked">解锁成就： %1$s</string>
+    <string name="achievements_title">成就 (Achievements)</string>
+    <string name="current_streak">当前连胜： %1$d 天</string>
+    <string name="longest_streak">历史最长： %1$d 天</string>
 </resources>

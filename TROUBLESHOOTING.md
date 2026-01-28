@@ -79,3 +79,56 @@
 - **交互限制**: 无法删除习惯。 -> **修复**: 增加长按 (Long Press) 删除功能。
 - **打卡繁琐**: 每次只能加1。 -> **修复**: 增加弹窗，提供 +1/+5/+10 及自定义输入。
 - **颜色单一**: 默认全为橙色。 -> **修复**: 在创建习惯时增加 7 色可选的色盘组件。
+
+## 5. 架构重构：Hilt 依赖注入 (Dependency Injection)
+
+### 5.1 Gradle 插件缺失
+- **问题现象**: 添加 Hilt 依赖后构建失败，提示无法找到 Hilt 相关类。
+- **原因**: 未在 `build.gradle.kts` (Root) 和 App 模块中应用 `dagger.hilt.android.plugin`。
+- **解决方案**: 在 Version Catalog 中定义插件并在 `build.gradle.kts` 中应用。
+
+### 5.2 Application 类未标注
+- **问题现象**: 运行时崩溃 `HiltAndroidApp must be attached to an @HiltAndroidApp Application`。
+- **解决方案**: 创建 `HabitFlowApplication` 类并添加 `@HiltAndroidApp` 注解，并在 `AndroidManifest.xml` 中注册。
+
+### 5.3 手动 DI 移除
+- **记录**: 移除了 `MainActivity` 中手动构建 `AppDatabase` 和 `ViewModelFactory` 的代码，改为使用 `@AndroidEntryPoint` 和 `by viewModels()`。
+
+## 6. 国际化适配 (Internationalization)
+
+### 6.1 XML 转义字符错误
+- **问题现象**: `mergeDebugResources FAILED`. 报错 `Invalid unicode escape sequence in string`。
+- **原因**: 在 `strings.xml` 中使用了 `\'` (反斜杠+单引号) 试图转义，如 `\' %1$s \'`。在某些 Gradle/AAPT2 版本中，若非必要（不在双引号属性值内），此写法可能导致解析错误或被误认为 Unicode 转义。 
+- **解决方案**: 移除单引号，直接使用 `%1$s` 占位符，或使用标准 XML 实体 `&apos;`。最终选择移除引号以保持界面简洁。
+
+### 6.2 代码重构导致的 Import 丢失
+- **问题现象**: `Unresolved reference: HabitViewModel`, `Arrangement`, `PaddingValues` 等。
+- **原因**: 使用 AI 工具重写 `HomeScreen.kt` 以替换硬编码字符串时，意外截断或遗漏了部分 `import` 语句。
+- **解决方案**: 手动补全所有缺失的 Compose 和项目相关 Import。
+
+### 6.3 冲突的 Import
+- **问题现象**: `Conflicting import, imported name 'Arrangement' is ambiguous`。
+- **原因**: 修复 import 时不仅补全了缺失的，还重复添加了已存在的 import，导致 IDE/编译器无法确定使用哪个。
+- **解决方案**: 清理文件头部，移除重复的 import 语句。
+
+## 7. 数据导出 (Data Export)
+
+### 7.1 Room 协程限制
+- **问题现象**: 导出功能需要一次性获取所有数据写入文件，但 `Dao` 中 `getAllHabits()` 返回的是 `Flow` (异步流)。
+- **解决方案**: 在 `Dao` 和 `Repository` 中新增 `suspend fun ...Sync()` 方法，直接返回 `List<T>`，方便在 `viewModelScope` 中同步处理数据。
+
+### 7.2 文件访问权限
+- **记录**: 采用 **Storage Access Framework (SAF)** 机制。
+- **实现**: 使用 `ActivityResultContracts.CreateDocument` 启动系统文件选择器，由用户指定保存位置和文件名，避免了申请复杂的存储权限 (`WRITE_EXTERNAL_STORAGE`)。
+
+## 8. 激励系统 (Incentive System)
+
+### 8.1 缺少布局 Import
+- **问题现象**: 编译失败 `Unresolved reference: fillMaxWidth`, `padding`, `Arrangement` 等。
+- **原因**: 在新增 `HabitCard` 的连胜显示功能时，重写了文件但遗漏了 `androidx.compose.foundation.layout.*` 的相关 Import。
+- **解决方案**: 补全缺失的布局相关 Import。
+
+### 8.2 ViewModel 引用丢失
+- **问题现象**: `Unresolved reference: name`。
+- **原因**: 在修改 `HabitViewModel` 添加 `exportData` 方法时，意外覆盖了 `calculateStreaks` 方法中的代码块，导致闭包结构错误或变量引用失效。
+- **解决方案**: 仔细检查并恢复了完整的 `exportData` 和 `generateHistory` 方法，确保代码逻辑完整。

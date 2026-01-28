@@ -1,4 +1,0 @@
-#Tue Jan 27 21:27:00 CST 2026
-base.0=D\:\\GitHub\\app\\app\\build\\intermediates\\dex\\release\\minifyReleaseWithR8\\classes.dex
-path.0=classes.dex
-renamed.0=classes.dex

@@ -11,5 +11,7 @@ data class HabitEntity(
     val dailyTarget: Int,
     val unit: String, // e.g., 'reps', 'mins', 'ml'
     val colorHex: String, // Hex color code for UI charts
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val currentStreak: Int = 0,
+    val longestStreak: Int = 0
 )

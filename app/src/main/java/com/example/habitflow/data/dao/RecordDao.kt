@@ -18,6 +18,9 @@ interface RecordDao {
     @Query("SELECT * FROM habit_records WHERE habitId = :habitId AND date = :date")
     fun getRecordsForDay(habitId: Long, date: Long): Flow<List<HabitRecordEntity>>
 
+    @Query("SELECT * FROM habit_records")
+    suspend fun getAllRecordsSync(): List<HabitRecordEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRecord(record: HabitRecordEntity)
 }

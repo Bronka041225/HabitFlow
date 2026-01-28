@@ -13,11 +13,17 @@ interface HabitDao {
     @Query("SELECT * FROM habits ORDER BY createdAt DESC")
     fun getAllHabits(): Flow<List<HabitEntity>>
 
+    @Query("SELECT * FROM habits ORDER BY createdAt DESC")
+    suspend fun getAllHabitsSync(): List<HabitEntity>
+
     @Query("SELECT * FROM habits WHERE id = :id")
     fun getHabitById(id: Long): Flow<HabitEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHabit(habit: HabitEntity): Long
+    
+    @androidx.room.Update
+    suspend fun updateHabit(habit: HabitEntity)
 
     @Delete
     suspend fun deleteHabit(habit: HabitEntity)
