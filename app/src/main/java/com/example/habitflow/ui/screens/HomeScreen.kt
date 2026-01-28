@@ -30,21 +30,25 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,26 +56,36 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.habitflow.R
 import com.example.habitflow.data.entity.HabitEntity
+import com.example.habitflow.ui.components.AddHabitBottomSheet
+import com.example.habitflow.ui.components.ExportBottomSheet
 import com.example.habitflow.ui.components.HabitCard
 import com.example.habitflow.ui.viewmodel.HabitViewModel
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HabitViewModel,
     onHabitClick: (Long) -> Unit
 ) {
     val habits by viewModel.habits.collectAsState()
-    var showAddDialog by remember { mutableStateOf(false) }
+    var showAddSheet by remember { mutableStateOf(false) }
+    val addSheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+    
     var habitToDelete by remember { mutableStateOf<HabitEntity?>(null) }
     var habitToLog by remember { mutableStateOf<HabitEntity?>(null) }
     
     // Export State
-    var showExportDialog by remember { mutableStateOf(false) }
+    var showExportSheet by remember { mutableStateOf(false) }
+    val exportSheetState = rememberModalBottomSheetState()
     var exportFormat by remember { mutableStateOf("JSON") }
     val context = LocalContext.current
     
@@ -103,7 +117,7 @@ fun HomeScreen(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showAddDialog = true },
+                onClick = { showAddSheet = true },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -124,47 +138,105 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.title_focus),
+                    text = "Focus",
                     style = MaterialTheme.typography.displayLarge.copy(fontSize = 40.sp),
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                IconButton(onClick = { showExportDialog = true }) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = stringResource(R.string.export_data),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                
+                Row {
+                    // 生成测试数据按钮
+                    IconButton(onClick = { 
+                        viewModel.generateTestData()
+                        Toast.makeText(context, "Test data generated", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Generate test data",
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    
+                    // 导出按钮
+                    IconButton(onClick = { showExportSheet = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = stringResource(R.string.export_data),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Habit List
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
-            ) {
-                items(habits, key = { it.id }) { habit ->
-                    HabitRow(
-                        habit = habit,
-                        viewModel = viewModel,
-                        onClick = { onHabitClick(habit.id) },
-                        onLongClick = { habitToDelete = habit },
-                        onLogClick = { habitToLog = habit }
+            
+            // 空状态提示
+            if (habits.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "No habits yet",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Tap the blue button above to generate test data\nor tap + to create your first habit",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            } else {
+                // Habit List
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(habits, key = { it.id }) { habit ->
+                        HabitRow(
+                            habit = habit,
+                            viewModel = viewModel,
+                            onClick = { onHabitClick(habit.id) },
+                            onLongClick = { habitToDelete = habit },
+                            onLogClick = { habitToLog = habit }
+                        )
+                    }
                 }
             }
         }
 
-        if (showAddDialog) {
-            AddHabitDialog(
-                onDismiss = { showAddDialog = false },
-                onConfirm = { name, target, color ->
-                    viewModel.addHabit(name, target, color)
-                    showAddDialog = false
-                },
-                onGenerateTest = {
-                    viewModel.generateTestData()
-                    showAddDialog = false
+        if (showAddSheet) {
+            AddHabitBottomSheet(
+                sheetState = addSheetState,
+                onDismiss = { showAddSheet = false },
+                onConfirm = { name, target, color, icon ->
+                    viewModel.addHabit(name, target, color, icon)
+                    scope.launch { addSheetState.hide() }.invokeOnCompletion {
+                        if (!addSheetState.isVisible) {
+                            showAddSheet = false
+                        }
+                    }
+                }
+            )
+        }
+
+        if (showExportSheet) {
+            ExportBottomSheet(
+                sheetState = exportSheetState,
+                onDismiss = { showExportSheet = false },
+                onConfirm = { format ->
+                    exportFormat = format
+                    val fileName = "habitflow_backup_${System.currentTimeMillis()}.${format.lowercase()}"
+                    exportLauncher.launch(fileName)
+                    scope.launch { exportSheetState.hide() }.invokeOnCompletion {
+                        if (!exportSheetState.isVisible) {
+                            showExportSheet = false
+                        }
+                    }
                 }
             )
         }
@@ -203,55 +275,7 @@ fun HomeScreen(
                 }
             )
         }
-
-        if (showExportDialog) {
-            ExportDialog(
-                onDismiss = { showExportDialog = false },
-                onConfirm = { format ->
-                    exportFormat = format
-                    val fileName = "habitflow_backup_${System.currentTimeMillis()}.${format.lowercase()}"
-                    exportLauncher.launch(fileName)
-                    showExportDialog = false
-                }
-            )
-        }
     }
-}
-
-@Composable
-fun ExportDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.export_data)) },
-        text = {
-            Column {
-                Text(stringResource(R.string.choose_export_format))
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { onConfirm("JSON") },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.export_json))
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { onConfirm("CSV") },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.export_csv))
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        }
-    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -264,124 +288,24 @@ fun HabitRow(
     onLogClick: () -> Unit
 ) {
     val currentCount by viewModel.getTodayCount(habit.id).collectAsState(initial = 0)
+    val themeColor = try {
+        Color(android.graphics.Color.parseColor(habit.colorHex))
+    } catch (e: Exception) {
+        MaterialTheme.colorScheme.primary
+    }
 
-    // We wrap HabitCard to intercept clicks but pass the 'onIncrement' to open the dialog
     HabitCard(
         habitName = habit.name,
         currentCount = currentCount,
         targetCount = habit.dailyTarget,
         streak = habit.currentStreak,
-        onIncrement = onLogClick, // The '+' button opens the log dialog
+        iconName = habit.iconName,  // 传递图标名称
+        themeColor = themeColor,
+        onIncrement = onLogClick,
         modifier = Modifier.combinedClickable(
             onClick = onClick,
             onLongClick = onLongClick
         )
-    )
-}
-
-@Composable
-fun AddHabitDialog(
-    onDismiss: () -> Unit, 
-    onConfirm: (String, Int, String) -> Unit,
-    onGenerateTest: () -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var target by remember { mutableStateOf("") }
-    
-    // Preset Palette
-    val colors = listOf(
-        "#FF6D00", // Electric Orange
-        "#2196F3", // Ocean Blue
-        "#00E676", // Mint Green
-        "#FF4081", // Hot Pink
-        "#7C4DFF", // Violet
-        "#FF5252", // Bright Red
-        "#00BCD4"  // Cyan
-    )
-    var selectedColor by remember { mutableStateOf(colors[0]) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.create_habit)) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.habit_name_label)) },
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = target,
-                    onValueChange = { target = it },
-                    label = { Text(stringResource(R.string.daily_target_label)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.select_color), style = MaterialTheme.typography.labelMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Color Palette Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    colors.forEach { colorHex ->
-                        val isSelected = selectedColor == colorHex
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color(android.graphics.Color.parseColor(colorHex)))
-                                .border(
-                                    width = if (isSelected) 2.dp else 0.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
-                                    shape = CircleShape
-                                )
-                                .clickable { selectedColor = colorHex },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                // Debug button
-                TextButton(
-                    onClick = onGenerateTest,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(stringResource(R.string.debug_generate_data), color = Color.Gray)
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isNotBlank() && target.toIntOrNull() != null) {
-                        onConfirm(name, target.toInt(), selectedColor)
-                    }
-                }
-            ) {
-                Text(stringResource(R.string.create))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        }
     )
 }
 

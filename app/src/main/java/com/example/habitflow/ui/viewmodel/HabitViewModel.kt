@@ -57,21 +57,23 @@ class HabitViewModel @Inject constructor(
             try {
                 val currentHabits = repository.allHabits.first()
                 if (currentHabits.isEmpty()) {
-                    generateTestData()
+                    // generateTestData()  // 已禁用自动生成，改用手动按钮
                 }
             } catch (e: Exception) {
+                android.util.Log.e("HabitViewModel", "Init failed", e)
                 e.printStackTrace()
             }
         }
     }
 
-    fun addHabit(name: String, target: Int, color: String = "#FF6D00") {
+    fun addHabit(name: String, target: Int, color: String = "#FF6D00", icon: String = "Star") {
         viewModelScope.launch {
             val newHabit = HabitEntity(
                 name = name,
                 dailyTarget = target,
                 unit = context.getString(R.string.unit_times),
-                colorHex = color
+                colorHex = color,
+                iconName = icon
             )
             repository.insertHabit(newHabit)
         }
