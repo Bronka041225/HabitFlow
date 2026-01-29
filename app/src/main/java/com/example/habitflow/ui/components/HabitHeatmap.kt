@@ -22,6 +22,7 @@ import com.example.habitflow.data.entity.HabitRecordEntity
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import androidx.compose.foundation.clickable
 
 data class MonthData(
     val yearMonth: YearMonth,
@@ -31,7 +32,8 @@ data class MonthData(
 data class DayData(
     val date: LocalDate,
     val count: Int,
-    val intensity: Float
+    val intensity: Float,
+    val record: HabitRecordEntity? = null
 )
 
 @Composable
@@ -39,7 +41,8 @@ fun HabitHeatmap(
     records: List<HabitRecordEntity>,
     target: Int,
     colorHex: String,
-    days: Int = 84 // 默认保留参数兼容性
+    days: Int = 84, // 默认保留参数兼容性
+    onDayClick: (LocalDate, HabitRecordEntity?) -> Unit
 ) {
     val themeColor = remember(colorHex) {
         try {
@@ -53,9 +56,7 @@ fun HabitHeatmap(
 
     // 将记录转换为月度数据
     val monthlyData = remember(records, target) {
-        val recordMap = records.associate { 
-            LocalDate.ofEpochDay(it.date) to it.count 
-        }
+        val recordMap = records.associateBy { LocalDate.ofEpochDay(it.date) }
         
         val today = LocalDate.now()
         val currentMonth = YearMonth.from(today)
@@ -82,14 +83,15 @@ fun HabitHeatmap(
             
             val daysList = (1..daysInMonth).map { dayOfMonth ->
                 val date = yearMonth.atDay(dayOfMonth)
-                val count = recordMap[date] ?: 0
+                val record = recordMap[date]
+                val count = record?.count ?: 0
                 val intensity = if (target > 0 && count > 0) {
                     (count.toFloat() / target).coerceIn(0f, 1f)
                 } else {
                     0f
                 }
                 
-                DayData(date, count, intensity)
+                DayData(date, count, intensity, record)
             }
             
             MonthData(yearMonth, daysList)
@@ -99,25 +101,25 @@ fun HabitHeatmap(
     val displayMonths = if (showAllMonths) monthlyData else monthlyData.take(1)
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 标题和切换按钮
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Consistency",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            if (monthlyData.size > 1) {
+        // Toggle Button (Title removed as per requirement)
+        if (monthlyData.size > 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
                 OutlinedButton(
                     onClick = { showAllMonths = !showAllMonths },
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = if (showAllMonths) "Collapse" else "View All",
+                        text = if (showAllMonths) "收起" else "查看全部", // Localized directly or use string resource if available, but requirement said change all text. 
+                        // Wait, better to use string resource if I'm updating strings.xml.
+                        // I'll stick to hardcoded chinese here if resources aren't updated yet in this file, or update strings.xml first.
+                        // Actually, I'll update strings.xml later. I'll use the english logic but rely on strings.xml for other parts.
+                        // But for this button, I should probably use string resources.
+                        // Let's assume I'll add "view_all" and "collapse" to strings.xml or just use Chinese here since the requirement says "Change ALL text... to Simplified Chinese".
+                        // I will use Chinese directly here to be safe and quick.
+                        // "收起" (Collapse), "查看全部" (View All)
                         fontSize = 12.sp
                     )
                 }
@@ -126,23 +128,24 @@ fun HabitHeatmap(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // 月份列表
+        // Month List
         displayMonths.forEach { monthData ->
             MonthHeatmapView(
                 monthData = monthData,
-                themeColor = themeColor
+                themeColor = themeColor,
+                onDayClick = onDayClick
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
         
-        // 图例
+        // Legend
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Less",
+                text = "少",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -164,7 +167,7 @@ fun HabitHeatmap(
             }
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "More",
+                text = "多",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -175,10 +178,11 @@ fun HabitHeatmap(
 @Composable
 fun MonthHeatmapView(
     monthData: MonthData,
-    themeColor: Color
+    themeColor: Color,
+    onDayClick: (LocalDate, HabitRecordEntity?) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 月份标题
+        // Month Title
         Text(
             text = monthData.yearMonth.format(DateTimeFormatter.ofPattern("yyyy年 M月")),
             style = MaterialTheme.typography.labelLarge,
@@ -188,12 +192,12 @@ fun MonthHeatmapView(
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        // 星期标题
+        // Weekday Title
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun").forEach { day ->
+            listOf("一", "二", "三", "四", "五", "六", "日").forEach { day ->
                 Text(
                     text = day,
                     style = MaterialTheme.typography.labelSmall,
@@ -237,20 +241,37 @@ fun MonthHeatmapView(
                                 } else {
                                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                                 }
-                            ),
+                            )
+                            .clickable(enabled = dayData != null) {
+                                dayData?.let { onDayClick(it.date, it.record) }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         dayData?.let {
-                            Text(
-                                text = it.date.dayOfMonth.toString(),
-                                fontSize = 10.sp,
-                                color = if (it.intensity > 0.5f) {
-                                    Color.White
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                },
-                                fontWeight = if (it.count > 0) FontWeight.Bold else FontWeight.Normal
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = it.date.dayOfMonth.toString(),
+                                    fontSize = 10.sp,
+                                    color = if (it.intensity > 0.5f) {
+                                        Color.White
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    },
+                                    fontWeight = if (it.count > 0) FontWeight.Bold else FontWeight.Normal
+                                )
+                                
+                                // Note Indicator
+                                if (!it.record?.note.isNullOrBlank()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(4.dp)
+                                            .align(Alignment.TopEnd)
+                                            .offset(x = 1.dp, y = (-1).dp) // Slight offset
+                                            .clip(RoundedCornerShape(2.dp))
+                                            .background(MaterialTheme.colorScheme.error)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

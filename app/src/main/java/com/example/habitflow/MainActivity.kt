@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.habitflow.ui.screens.ArchivedHabitsScreen
 import com.example.habitflow.ui.screens.HabitDetailScreen
 import com.example.habitflow.ui.screens.HomeScreen
 import com.example.habitflow.ui.theme.HabitFlowTheme
@@ -32,7 +33,16 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             onHabitClick = { habitId ->
                                 navController.navigate("detail/$habitId")
+                            },
+                            onNavigateToArchive = {
+                                navController.navigate("archived")
                             }
+                        )
+                    }
+                    composable("archived") {
+                        ArchivedHabitsScreen(
+                            viewModel = viewModel,
+                            navController = navController
                         )
                     }
                     composable(

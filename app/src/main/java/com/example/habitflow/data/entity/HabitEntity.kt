@@ -14,5 +14,6 @@ data class HabitEntity(
     val iconName: String = "Star", // Icon name for UI
     val createdAt: Long = System.currentTimeMillis(),
     val currentStreak: Int = 0,
-    val longestStreak: Int = 0
+    val longestStreak: Int = 0,
+    val isArchived: Boolean = false
 )

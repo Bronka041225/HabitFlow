@@ -16,11 +16,11 @@
     <string name="quick_add">快速添加</string>
     <string name="custom_amount">自定义数量</string>
     <string name="input_number_placeholder">输入数字</string>
-    <string name="add_custom">添加自定义</string>
+    <string name="add_custom">确定</string>
     <string name="detail_title">详情</string>
     <string name="back">返回</string>
     <string name="total_label">总计 %1$s</string>
-    <string name="consistency_title">坚持记录 (Consistency)</string>
+    <string name="consistency_title">坚持记录</string>
     <string name="trend_title">近期趋势 (30天)</string>
     <string name="unit_times">次</string>
     <string name="unit_minutes">分钟</string>
@@ -34,6 +34,18 @@
     <string name="export_success">导出成功</string>
     <string name="export_failed">导出失败</string>
     <string name="choose_export_format">选择导出格式</string>
+    <string name="note_optional">添加备注 (可选)</string>
+    <string name="note_placeholder">例如: 今天感觉不错！</string>
+    <string name="edit_record_title">编辑记录 (%1$s)</string>
+    <string name="save">保存</string>
+    <string name="delete_record">删除记录</string>
+    <string name="insights">数据分析</string>
+    <string name="recent_history">近期历史</string>
+    <string name="no_records_recent">近30天暂无记录</string>
+    <string name="stat_total_volume">总打卡量</string>
+    <string name="stat_best_day">最佳日</string>
+    <string name="stat_daily_avg">日均</string>
+    <string name="stat_completion">完成率</string>
     
     <!-- Achievements -->
     <string name="achievement_streak_3">三日连胜</string>
@@ -43,7 +55,19 @@
     <string name="achievement_streak_30">月度大师</string>
     <string name="achievement_streak_30_desc">连续打卡 30 天！</string>
     <string name="achievement_unlocked">解锁成就： %1$s</string>
-    <string name="achievements_title">成就 (Achievements)</string>
+    <string name="achievements_title">成就</string>
     <string name="current_streak">当前连胜： %1$d 天</string>
     <string name="longest_streak">历史最长： %1$d 天</string>
+    
+    <!-- Archiving -->
+    <string name="archive_habit">归档习惯</string>
+    <string name="archive_habit_confirm">确定要归档 \'%1$s\' 吗？\n它将被移动到归档列表，您可以随时恢复。</string>
+    <string name="archive">归档</string>
+    <string name="restore">恢复</string>
+    <string name="delete_permanently">永久删除</string>
+    <string name="archived_habits_title">归档习惯</string>
+    <string name="manage_habit">管理: %1$s</string>
+    <string name="no_archived_habits">暂无归档习惯</string>
+    <string name="restore_confirm">确定要恢复 \'%1$s\' 吗？</string>
+    <string name="delete_permanently_confirm">确定要永久删除 \'%1$s\' 吗？\n此操作无法撤销。</string>
 </resources>

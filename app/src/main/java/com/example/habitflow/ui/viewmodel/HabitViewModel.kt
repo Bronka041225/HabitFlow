@@ -32,6 +32,13 @@ data class HabitExportData(
     val records: List<HabitRecordEntity>
 )
 
+data class HabitStats(
+    val bestDayOfWeek: String = "N/A",
+    val totalVolume: Int = 0,
+    val averagePerDay: Float = 0f,
+    val completionRate: Float = 0f
+)
+
 @HiltViewModel
 class HabitViewModel @Inject constructor(
     private val repository: HabitRepository,
@@ -45,6 +52,13 @@ class HabitViewModel @Inject constructor(
     val achievementEvent = _achievementEvent.receiveAsFlow()
 
     val habits: StateFlow<List<HabitEntity>> = repository.allHabits
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val archivedHabits: StateFlow<List<HabitEntity>> = repository.allArchivedHabits
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -81,23 +95,94 @@ class HabitViewModel @Inject constructor(
 
     fun deleteHabit(habit: HabitEntity) {
         viewModelScope.launch {
+            // Soft delete (archive) by default if called from Home, but this method is named deleteHabit.
+            // Based on requirement: Home -> Archive, Archived -> Delete Permanently.
+            // Preserving original deleteHabit as 'delete permanently' to not break existing calls immediately,
+            // but new calls should use specific methods.
             repository.deleteHabit(habit)
         }
     }
 
-    fun incrementHabit(habit: HabitEntity, amount: Int = 1) {
+    fun archiveHabit(habit: HabitEntity) {
+        viewModelScope.launch {
+            repository.archiveHabit(habit)
+        }
+    }
+
+    fun restoreHabit(habit: HabitEntity) {
+        viewModelScope.launch {
+            repository.restoreHabit(habit)
+        }
+    }
+
+    fun deleteHabitPermanently(habit: HabitEntity) {
+        viewModelScope.launch {
+            repository.deleteHabit(habit)
+        }
+    }
+
+    fun updateRecord(record: HabitRecordEntity) {
+        viewModelScope.launch {
+            repository.upsertRecord(record)
+            // Need to fetch habit to recalc streaks
+            repository.getHabitById(record.habitId).first().let {
+                calculateStreaks(it)
+            }
+        }
+    }
+
+    fun deleteRecord(record: HabitRecordEntity) {
+        viewModelScope.launch {
+            // repository.deleteRecord(record) // Wait, Repository doesn't have deleteRecord yet?
+            // Checking HabitRepository... It only has upsertRecord.
+            // I need to add deleteRecord to Repository and Dao first? 
+            // Or use SQL to delete?
+            // Actually, I missed checking Repository for deleteRecord. 
+            // Let's assume I need to add it if it's missing.
+            // But I can't check now. I will assume I need to add it to Repository/Dao or use a workaround if simple.
+            // But wait, RecordDao usually has @Delete.
+            // Let's add it to Dao/Repo in next step if needed, but for now let's write the VM code assuming it exists 
+            // OR I can use query to delete if I only have upsert? No.
+            // Let's check Repository content I read earlier.
+            // Repository has: upsertRecord. No deleteRecord.
+            // So I must add deleteRecord to Repository and DAO first.
+            // I will add the VM method assuming I'll fix Repo/Dao in a moment.
+            // But I can't modify multiple files in one turn reliably if I need to compile.
+            // I will add the logic to VM but I need to ensure Repo has it. 
+            // I'll add the repo/dao update in a separate tool call if possible or just assume I will do it.
+            // Actually, I can do multiple edits.
+            
+            // Wait, I am editing VM now. I should adding deleteRecord to Repo/Dao as well.
+            // I'll do that in a separate step to be safe. 
+            // For now, let's just comment it out or add a TODO, or better, implement it properly.
+            // I will add `repository.deleteRecord(record)` and then I will update Repository.
+            repository.deleteRecord(record)
+            
+            repository.getHabitById(record.habitId).first().let {
+                calculateStreaks(it)
+            }
+        }
+    }
+
+    fun incrementHabit(habit: HabitEntity, amount: Int = 1, note: String? = null) {
         viewModelScope.launch {
             val today = LocalDate.now().toEpochDay()
             val records = repository.getRecordsForDay(habit.id, today).first()
             val existingRecord = records.firstOrNull()
 
             if (existingRecord != null) {
-                repository.upsertRecord(existingRecord.copy(count = existingRecord.count + amount))
+                val newNote = if (note.isNullOrBlank()) {
+                    existingRecord.note
+                } else {
+                    if (existingRecord.note.isNullOrBlank()) note else "${existingRecord.note}\n$note"
+                }
+                repository.upsertRecord(existingRecord.copy(count = existingRecord.count + amount, note = newNote))
             } else {
                 val newRecord = HabitRecordEntity(
                     habitId = habit.id,
                     date = today,
-                    count = amount
+                    count = amount,
+                    note = if (note.isNullOrBlank()) null else note
                 )
                 repository.upsertRecord(newRecord)
             }
@@ -179,6 +264,37 @@ class HabitViewModel @Inject constructor(
     }
     
     fun getAchievements(habitId: Long): Flow<List<AchievementEntity>> = repository.getAchievementsForHabit(habitId)
+
+    fun getHabitStats(habitId: Long): Flow<HabitStats> {
+        return repository.getAllRecordsForHabit(habitId).map { records ->
+            if (records.isEmpty()) return@map HabitStats()
+
+            // Total Volume
+            val totalVolume = records.sumOf { it.count }
+
+            // Best Day of Week
+            val bestDay = records.groupBy { LocalDate.ofEpochDay(it.date).dayOfWeek }
+                .maxByOrNull { entry -> entry.value.map { it.count }.average() }
+                ?.key?.name?.lowercase()?.capitalize() ?: "N/A"
+
+            // Average per Day (Active days)
+            val average = if (records.isNotEmpty()) totalVolume.toFloat() / records.size else 0f
+            
+            // Completion Rate (Active Days / Total Days since start)
+            val oldestDate = records.minOf { it.date }
+            val today = LocalDate.now().toEpochDay()
+            val totalDays = max(1, (today - oldestDate + 1).toInt())
+            val distinctActiveDays = records.map { it.date }.distinct().count()
+            val completionRate = distinctActiveDays.toFloat() / totalDays
+
+            HabitStats(
+                bestDayOfWeek = bestDay,
+                totalVolume = totalVolume,
+                averagePerDay = average,
+                completionRate = completionRate
+            )
+        }
+    }
 
     fun getHabitById(id: Long): Flow<HabitEntity> = repository.getHabitById(id)
     fun getRecordsForHabit(id: Long): Flow<List<HabitRecordEntity>> = repository.getAllRecordsForHabit(id)

@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -61,6 +63,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.example.habitflow.R
 import com.example.habitflow.data.entity.HabitEntity
 import com.example.habitflow.ui.components.AddHabitBottomSheet
@@ -73,7 +77,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     viewModel: HabitViewModel,
-    onHabitClick: (Long) -> Unit
+    onHabitClick: (Long) -> Unit,
+    onNavigateToArchive: () -> Unit
 ) {
     val habits by viewModel.habits.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
@@ -81,7 +86,9 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     
     var habitToDelete by remember { mutableStateOf<HabitEntity?>(null) }
+    var habitToArchive by remember { mutableStateOf<HabitEntity?>(null) }
     var habitToLog by remember { mutableStateOf<HabitEntity?>(null) }
+    var showOptionsForHabit by remember { mutableStateOf<HabitEntity?>(null) }
     
     // Export State
     var showExportSheet by remember { mutableStateOf(false) }
@@ -164,6 +171,15 @@ fun HomeScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
+                    
+                    // 归档页面按钮
+                    IconButton(onClick = onNavigateToArchive) {
+                        Icon(
+                            imageVector = Icons.Default.Email, // Using Email as Archive placeholder
+                            contentDescription = "Archived Habits",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -201,7 +217,7 @@ fun HomeScreen(
                             habit = habit,
                             viewModel = viewModel,
                             onClick = { onHabitClick(habit.id) },
-                            onLongClick = { habitToDelete = habit },
+                            onLongClick = { showOptionsForHabit = habit },
                             onLogClick = { habitToLog = habit }
                         )
                     }
@@ -240,6 +256,67 @@ fun HomeScreen(
                 }
             )
         }
+        
+        // Habit Options Menu (Simulated with Dialog)
+        showOptionsForHabit?.let { habit ->
+            AlertDialog(
+                onDismissRequest = { showOptionsForHabit = null },
+                title = { Text(stringResource(R.string.manage_habit, habit.name)) }, 
+                text = { 
+                    Column {
+                        TextButton(
+                            onClick = {
+                                habitToArchive = habit
+                                showOptionsForHabit = null
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.archive_habit))
+                        }
+                        TextButton(
+                            onClick = {
+                                habitToDelete = habit
+                                showOptionsForHabit = null
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text(stringResource(R.string.delete_habit))
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showOptionsForHabit = null }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
+
+        // Archive Confirmation
+        habitToArchive?.let { habit ->
+            AlertDialog(
+                onDismissRequest = { habitToArchive = null },
+                title = { Text(stringResource(R.string.archive_habit)) },
+                text = { Text(stringResource(R.string.archive_habit_confirm, habit.name)) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.archiveHabit(habit)
+                            habitToArchive = null
+                        }
+                    ) {
+                        Text(stringResource(R.string.archive))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { habitToArchive = null }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            )
+        }
 
         habitToDelete?.let { habit ->
             AlertDialog(
@@ -269,8 +346,8 @@ fun HomeScreen(
             LogProgressDialog(
                 habitName = habit.name,
                 onDismiss = { habitToLog = null },
-                onConfirm = { amount ->
-                    viewModel.incrementHabit(habit, amount)
+                onConfirm = { amount, note ->
+                    viewModel.incrementHabit(habit, amount, note)
                     habitToLog = null
                 }
             )
@@ -313,24 +390,28 @@ fun HabitRow(
 fun LogProgressDialog(
     habitName: String,
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
+    onConfirm: (Int, String?) -> Unit
 ) {
     var customAmount by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.log_habit, habitName)) },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
                 Text(stringResource(R.string.quick_add), style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    OutlinedButton(onClick = { onConfirm(1) }) { Text("+1") }
-                    OutlinedButton(onClick = { onConfirm(5) }) { Text("+5") }
-                    OutlinedButton(onClick = { onConfirm(10) }) { Text("+10") }
+                    OutlinedButton(onClick = { onConfirm(1, note.ifBlank { null }) }) { Text("+1") }
+                    OutlinedButton(onClick = { onConfirm(5, note.ifBlank { null }) }) { Text("+5") }
+                    OutlinedButton(onClick = { onConfirm(10, note.ifBlank { null }) }) { Text("+10") }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(stringResource(R.string.custom_amount), style = MaterialTheme.typography.labelMedium)
@@ -340,24 +421,40 @@ fun LogProgressDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     placeholder = { Text(stringResource(R.string.input_number_placeholder)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp) // More prominent shape
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(stringResource(R.string.note_optional), style = MaterialTheme.typography.labelMedium)
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    placeholder = { Text(stringResource(R.string.note_placeholder)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3,
+                    shape = RoundedCornerShape(12.dp)
                 )
             }
         },
         confirmButton = {
+            val amount = customAmount.toIntOrNull()
+            val isEnabled = amount != null && amount > 0
+            
             Button(
                 onClick = {
-                    val amount = customAmount.toIntOrNull()
-                    if (amount != null && amount > 0) {
-                        onConfirm(amount)
+                    if (isEnabled) {
+                        onConfirm(amount!!, note.ifBlank { null })
                     }
-                }
+                },
+                enabled = isEnabled,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.add_custom))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.cancel))
             }
         }

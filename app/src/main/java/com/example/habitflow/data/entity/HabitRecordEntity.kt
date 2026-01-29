@@ -23,5 +23,6 @@ data class HabitRecordEntity(
     val habitId: Long,
     val date: Long, // Epoch Day
     val count: Int,
+    val note: String? = null,
     val timestamp: Long = System.currentTimeMillis()
 )

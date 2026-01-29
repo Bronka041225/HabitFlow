@@ -23,4 +23,9 @@ interface RecordDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertRecord(record: HabitRecordEntity)
+    @androidx.room.Update
+    suspend fun updateRecord(record: HabitRecordEntity)
+
+    @androidx.room.Delete
+    suspend fun deleteRecord(record: HabitRecordEntity)
 }

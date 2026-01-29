@@ -18,6 +18,7 @@ class HabitRepository @Inject constructor(
 
     // Habit Operations
     val allHabits: Flow<List<HabitEntity>> = habitDao.getAllHabits()
+    val allArchivedHabits: Flow<List<HabitEntity>> = habitDao.getArchivedHabits()
     
     suspend fun getAllHabitsSync(): List<HabitEntity> = habitDao.getAllHabitsSync()
 
@@ -31,6 +32,14 @@ class HabitRepository @Inject constructor(
     
     suspend fun updateHabit(habit: HabitEntity) {
         habitDao.updateHabit(habit)
+    }
+
+    suspend fun archiveHabit(habit: HabitEntity) {
+        habitDao.updateHabit(habit.copy(isArchived = true))
+    }
+
+    suspend fun restoreHabit(habit: HabitEntity) {
+        habitDao.updateHabit(habit.copy(isArchived = false))
     }
 
     suspend fun deleteHabit(habit: HabitEntity) {
@@ -56,6 +65,10 @@ class HabitRepository @Inject constructor(
 
     suspend fun upsertRecord(record: HabitRecordEntity) {
         recordDao.upsertRecord(record)
+    }
+
+    suspend fun deleteRecord(record: HabitRecordEntity) {
+        recordDao.deleteRecord(record)
     }
     
     // Achievement Operations

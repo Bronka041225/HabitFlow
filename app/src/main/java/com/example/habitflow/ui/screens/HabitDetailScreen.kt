@@ -1,5 +1,6 @@
 package com.example.habitflow.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +33,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,9 +48,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.habitflow.R
 import com.example.habitflow.data.entity.AchievementEntity
+import com.example.habitflow.data.entity.HabitRecordEntity
+import com.example.habitflow.ui.components.EditRecordDialog
 import com.example.habitflow.ui.components.HabitHeatmap
 import com.example.habitflow.ui.components.HabitTrendChart
 import com.example.habitflow.ui.viewmodel.HabitViewModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +67,9 @@ fun HabitDetailScreen(
     val allRecords by viewModel.getRecordsForHabit(habitId).collectAsState(initial = emptyList())
     val recentRecords by viewModel.getLast30DaysRecords(habitId).collectAsState(initial = emptyList())
     val achievements by viewModel.getAchievements(habitId).collectAsState(initial = emptyList())
+    val stats by viewModel.getHabitStats(habitId).collectAsState(initial = com.example.habitflow.ui.viewmodel.HabitStats())
+    
+    var recordToEdit by remember { mutableStateOf<HabitRecordEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -196,6 +208,49 @@ fun HabitDetailScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // Insights Section
+                Text(
+                    text = "Insights",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    StatCard(
+                        title = "Total Volume",
+                        value = "${stats.totalVolume} ${h.unit}",
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        title = "Best Day",
+                        value = stats.bestDayOfWeek,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    StatCard(
+                        title = "Daily Avg",
+                        value = String.format("%.1f", stats.averagePerDay),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        title = "Completion",
+                        value = String.format("%.0f%%", stats.completionRate * 100),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
                 // Heatmap Section
                 Text(
                     text = stringResource(R.string.consistency_title),
@@ -207,7 +262,21 @@ fun HabitDetailScreen(
                 HabitHeatmap(
                     records = allRecords,
                     target = h.dailyTarget,
-                    colorHex = h.colorHex
+                    colorHex = h.colorHex,
+                    onDayClick = { date, record ->
+                        if (record != null) {
+                            recordToEdit = record
+                        } else {
+                            // Create a temporary record for today or past date to start editing
+                            // If user saves, it will be inserted.
+                            recordToEdit = HabitRecordEntity(
+                                habitId = habitId,
+                                date = date.toEpochDay(),
+                                count = 0,
+                                note = null
+                            )
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -224,7 +293,62 @@ fun HabitDetailScreen(
                     records = recentRecords,
                     colorHex = h.colorHex
                 )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // History Section (Merged into Heatmap)
+                // Click on heatmap days to view/edit history
+                
+                Spacer(modifier = Modifier.height(32.dp))
             }
+        }
+
+        recordToEdit?.let { record ->
+            EditRecordDialog(
+                record = record,
+                onDismiss = { recordToEdit = null },
+                onSave = { count, note ->
+                    viewModel.updateRecord(record.copy(count = count, note = note))
+                    recordToEdit = null
+                },
+                onDelete = {
+                    viewModel.deleteRecord(record)
+                    recordToEdit = null
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun StatCard(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
