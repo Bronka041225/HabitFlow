@@ -9,8 +9,9 @@ data class HabitEntity(
     val id: Long = 0,
     val name: String,
     val dailyTarget: Int,
-    val unit: String, // e.g., 'reps', 'mins', 'ml'
+    val unit: String = "reps", // e.g., 'reps', 'mins', 'ml'
     val colorHex: String, // Hex color code for UI charts
+    val iconName: String = "Star", // Icon name for UI
     val createdAt: Long = System.currentTimeMillis(),
     val currentStreak: Int = 0,
     val longestStreak: Int = 0

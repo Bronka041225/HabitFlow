@@ -159,25 +159,12 @@ Get-Content crash_full.log | Select-String -Pattern "FATAL|AndroidRuntime|Except
 
 ---
 
-## 📁 生成的辅助文件
+## 📁 常用脚本工具 (Scripts)
 
-项目根目录下已创建以下工具文件：
+项目根目录提供了以下批处理脚本，简化日常开发任务：
 
-### 编译脚本
-- `rebuild-release.bat` - 编译 Release 版本
-- `quick-fix-rebuild.bat` - 快速编译 Debug 版本
-
-### 诊断工具
-- `get-crash-log.bat` - 获取崩溃日志（CMD）
-- `get-crash-log.ps1` - 获取崩溃日志（PowerShell）
-- `diagnose-crash.bat` - 完整诊断工具
-- `view-crash-log.bat` - 实时查看日志
-
-### 文档
-- `CRASH_FIX_GUIDE.md` - 详细修复指南
-- `CRASH_FIX_SUMMARY.md` - 技术分析总结
-- `EMERGENCY_DEBUG.md` - 紧急调试指南
-- `README_CRASH_FIX.txt` - 快速参考
+- **`rebuild-release.bat`**: 完整编译流程。执行 clean -> assembleRelease -> 询问安装。推荐用于发布前测试。
+- **`view-crash-log.bat`**: 简单的日志查看器。连接手机后运行，可实时过滤并显示应用的崩溃日志。
 
 ---
 
